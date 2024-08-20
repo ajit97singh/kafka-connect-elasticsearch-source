@@ -16,6 +16,8 @@
 
 package com.github.dariobalinzo.schema;
 
+import java.util.Optional;
+
 public class NopNameConverter implements FieldNameConverter {
 
     public String from(String elasticName) {
@@ -23,7 +25,7 @@ public class NopNameConverter implements FieldNameConverter {
     }
 
     public String from(String prefix, String elasticName) {
-        return elasticName == null ? prefix : prefix + elasticName;
+        return prefix + Optional.ofNullable(elasticName).orElse("");
     }
 
 }

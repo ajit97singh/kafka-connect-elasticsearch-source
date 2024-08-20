@@ -71,14 +71,12 @@ public class SchemaConverter {
                 schemaBuilder.field(validKeyName, OPTIONAL_FLOAT64_SCHEMA);
             } else if (value instanceof Double) {
                 schemaBuilder.field(validKeyName, OPTIONAL_FLOAT64_SCHEMA);
-            } else if (value instanceof List) {
-                if (!((List<?>) value).isEmpty()) {
-                    Object head = ((List<?>) value).get(0);
-                    if (head instanceof Map) {
-                        convertListOfObject(prefixName, schemaBuilder, key, (List<Map<String, Object>>) value);
-                    } else {
-                        convertListSchema(prefixName, schemaBuilder, key, (List<?>)value);
-                    }
+            } else if (value instanceof List && !((List<?>) value).isEmpty()) {
+                Object head = ((List<?>) value).get(0);
+                if (head instanceof Map) {
+                    convertListOfObject(prefixName, schemaBuilder, key, (List<Map<String, Object>>) value);
+                } else {
+                    convertListSchema(prefixName, schemaBuilder, key, (List<?>)value);
                 }
             } else if (value instanceof Map) {
                 convertMapSchema(prefixName, schemaBuilder, entry);

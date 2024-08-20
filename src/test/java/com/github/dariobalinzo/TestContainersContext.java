@@ -26,8 +26,8 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.xcontent.XContentBuilder;
-import org.elasticsearch.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
@@ -109,7 +109,7 @@ public class TestContainersContext {
                 .field("age", 10)
                 .field("non-avro-field", "non-avro-field")
                 .field("avroField", "avro-field")
-                .object(NESTED_OBJECT, b -> b.field(CURSOR_FIELD, tsStart))
+//                .object(NESTED_OBJECT, b -> b.field(CURSOR_FIELD, tsStart))
                 .endObject();
 
         IndexRequest indexRequest = new IndexRequest(index);

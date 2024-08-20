@@ -35,6 +35,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +80,7 @@ public class ElasticSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> properties) {
+        logger.info("Starting connector Initial Log");
         try {
             config = new ElasticSourceTaskConfig(properties);
         } catch (ConfigException e) {
@@ -95,6 +97,7 @@ public class ElasticSourceTask extends SourceTask {
         cursorSearchField = config.getString(ElasticSourceConnectorConfig.INCREMENTING_FIELD_NAME_CONFIG);
         Objects.requireNonNull(cursorSearchField, ElasticSourceConnectorConfig.INCREMENTING_FIELD_NAME_CONFIG
                                                   + " conf is mandatory");
+        logger.info("Cursor search field is : {}", cursorSearchField);
         cursorField = new CursorField(cursorSearchField);
         secondaryCursorSearchField = config.getString(ElasticSourceConnectorConfig.SECONDARY_INCREMENTING_FIELD_NAME_CONFIG);
         secondaryCursorField = secondaryCursorSearchField == null ? null : new CursorField(secondaryCursorSearchField);
@@ -202,6 +205,10 @@ public class ElasticSourceTask extends SourceTask {
                     logger.info("fetching from {}", index);
                     Cursor lastValue = fetchLastOffset(index);
                     logger.info("found last value {}", lastValue);
+                    logger.info("Testing , get all indices ");
+                    logger.info(String.valueOf(elasticRepository.catIndices("")));
+                    logger.info("Test connection success");
+                    logger.info("secondaryCursorSearchField: {}",secondaryCursorSearchField);
                     PageResult pageResult = secondaryCursorSearchField == null ?
                             elasticRepository.searchAfter(index, lastValue) :
                             elasticRepository.searchAfterWithSecondarySort(index, lastValue);
@@ -213,6 +220,8 @@ public class ElasticSourceTask extends SourceTask {
                 logger.info("no data found, sleeping for {} ms", pollingMs);
                 Thread.sleep(pollingMs);
             }
+            logger.info("Poll ran successfully across indices : {}", indices);
+            logger.info("Total records found were : {}", results.size());
 
         } catch (Exception e) {
             logger.error("error", e);
@@ -222,17 +231,23 @@ public class ElasticSourceTask extends SourceTask {
 
     private Cursor fetchLastOffset(String index) {
         //first we check in cache memory the last value
+        logger.info("Checking last offset in cache");
         if (lastCursor.get(index) != null) {
             return lastCursor.get(index);
         }
 
+        logger.info("Last offset not found, getting from context");
+        logger.info("Index is : {}", index);
+        logger.info("Context config is {}", context.configs());
         //if cache is empty we check the framework
-        Map<String, Object> offset = context.offsetStorageReader().offset(Collections.singletonMap(INDEX, index));
+        OffsetStorageReader offsetStorageReader = context.offsetStorageReader();
+        Map<String, Object> offset = offsetStorageReader.offset(Collections.singletonMap(INDEX, index));
         if (offset != null) {
             String primaryCursor = (String) offset.get(POSITION);
             String secondaryCursor = (String) offset.get(POSITION_SECONDARY);
             return new Cursor(primaryCursor, secondaryCursor);
         } else {
+            logger.info("Offset loaded from framework is null, returning null cursor");
             return Cursor.empty();
         }
     }
@@ -252,7 +267,7 @@ public class ElasticSourceTask extends SourceTask {
                     index,
                     elasticDocument
             );
-
+            elasticDocument.put("sourceIndex", index);
             lastCursor.put(index, pageResult.getLastCursor());
             sent.merge(index, 1, Integer::sum);
 
@@ -261,10 +276,11 @@ public class ElasticSourceTask extends SourceTask {
             Schema schema = schemaConverter.convert(elasticDocument, index);
             Struct struct = structConverter.convert(elasticDocument, schema);
 
+            String newTopic = "sigma_global_search_index";
             SourceRecord sourceRecord = new SourceRecord(
                     sourcePartition,
                     sourceOffset,
-                    topic + index,
+                    newTopic,
                     //KEY
                     Schema.STRING_SCHEMA,
                     key,

@@ -67,10 +67,12 @@ public final class ElasticRepository {
     }
 
     public PageResult searchAfter(String index, Cursor cursor) throws IOException, InterruptedException {
+        logger.info("cursor is {}", cursor.getPrimaryCursor());
         QueryBuilder queryBuilder = cursor.getPrimaryCursor() == null ?
                 matchAllQuery() :
                 buildGreaterThen(cursorSearchField, cursor.getPrimaryCursor());
-
+        logger.info("Page size : {}",String.valueOf(pageSize));
+        logger.info("cursorSearchField : {}",String.valueOf(cursorSearchField));
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
                 .query(queryBuilder)
                 .size(pageSize)
@@ -163,6 +165,7 @@ public final class ElasticRepository {
         IOException lastError = null;
         for (int i = 0; i < maxTrials; ++i) {
             try {
+                logger.info("Search request description: {}", searchRequest);
                 return elasticConnection.getClient()
                         .search(searchRequest, RequestOptions.DEFAULT);
             } catch (IOException e) {
